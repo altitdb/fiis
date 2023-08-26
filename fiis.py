@@ -55,6 +55,15 @@ def download_ranking():
     f.close
 
 
+def format_type_currency(value):
+    if value != value:
+        return 0
+    if type(value) == float:
+        return value / 100
+    new_value = value.replace('%', '').replace('R', '').replace('$', '').replace('.', '').replace(',', '.')
+    return float(new_value) / 100
+
+
 def format_type(value):
     if value != value:
         return 0
@@ -64,6 +73,10 @@ def format_type(value):
 
 def format_money(value):
     return format_currency(value, 'BRL', locale='pt_BR')
+
+
+def format_without_symbol(value):
+    return "{:,.2f}".format(value)
 
 
 def format_percent(value):
@@ -92,12 +105,14 @@ def process_ranking():
     df.info()
 
     logging.info('Normalizing numbers')
-    df['Preço Atual (R$)'] = df['Preço Atual (R$)'].apply(format_type)
+    df['Preço Atual (R$)'] = df['Preço Atual (R$)'].apply(format_type_currency)
     df['Liquidez Diária (R$)'] = df['Liquidez Diária (R$)'].apply(format_type)
-    df['Último Dividendo'] = df['Último Dividendo'].apply(format_type)
+    df['P/VP'] = df['P/VP'].apply(format_type_currency)
+    df['Último Dividendo'] = df['Último Dividendo'].apply(format_type_currency)
     df['DY (12M) Acumulado'] = df['DY (12M) Acumulado'].apply(format_type)
     df['Rentab. Acumulada'] = df['Rentab. Acumulada'].apply(format_type)
     df['Patrimônio Líquido'] = df['Patrimônio Líquido'].apply(format_type)
+    df['P/VPA'] = df['P/VPA'].apply(format_type_currency)
     df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_type)
     df['Vacância Física'] = df['Vacância Física'].apply(format_type)
 
@@ -108,7 +123,7 @@ def process_ranking():
     logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with P/VPA")
-    df = df.loc[(df['P/VPA'] > 74) & (df['P/VPA'] < 126)]
+    df = df.loc[(df['P/VPA'] > 0.74) & (df['P/VPA'] < 1.26)]
     logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with Vacância Financeira")
@@ -140,10 +155,12 @@ def process_ranking():
     logging.info('Formatting results')
     df['Preço Atual (R$)'] = df['Preço Atual (R$)'].apply(format_money)
     df['Liquidez Diária (R$)'] = df['Liquidez Diária (R$)'].apply(format_money)
+    df['P/VP'] = df['P/VP'].apply(format_without_symbol)
     df['Último Dividendo'] = df['Último Dividendo'].apply(format_money)
     df['DY (12M) Acumulado'] = df['DY (12M) Acumulado'].apply(format_percent)
     df['Rentab. Acumulada'] = df['Rentab. Acumulada'].apply(format_percent)
     df['Patrimônio Líquido'] = df['Patrimônio Líquido'].apply(format_money)
+    df['P/VPA'] = df['P/VPA'].apply(format_without_symbol)
     df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_percent)
     df['Vacância Física'] = df['Vacância Física'].apply(format_percent)
 
