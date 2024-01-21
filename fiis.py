@@ -11,6 +11,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
+PATRIMONIO_LIQUIDO = 'Patrimônio Líquido'
+LIQUIDEZ_DIARIA = 'Liquidez Diária (R$)'
+P_VP = 'P/VP'
+ULTIMO_DIVIDENDO = 'Último Dividendo'
+PRECO_ATUAL = 'Preço Atual (R$)'
+RENTABILIDADE_ACUMULADA = 'Rentab. Acumulada'
+DV_12M_ACUMULADO = 'DY (12M) Acumulado'
+P_VPA = 'P/VPA'
+QUANTIDADE_ATIVOS = 'Quant. Ativos'
+
 config.fileConfig('log.conf')
 
 
@@ -30,7 +40,7 @@ def verify_if_ranking_exists():
 def download_ranking():
     logging.info('Downloading ranking')
     options = webdriver.ChromeOptions()
-    options.add_argument('--headless')
+    # options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36"
@@ -52,7 +62,7 @@ def download_ranking():
     filename = get_filename('ranking')
     f = open(filename, 'wb')
     f.write(web_content.encode())
-    f.close
+    f.close()
 
 
 def format_type_currency(value):
@@ -105,64 +115,64 @@ def process_ranking():
     df.info()
 
     logging.info('Normalizing numbers')
-    df['Preço Atual (R$)'] = df['Preço Atual (R$)'].apply(format_type_currency)
-    df['Liquidez Diária (R$)'] = df['Liquidez Diária (R$)'].apply(format_type)
-    df['P/VP'] = df['P/VP'].apply(format_type_currency)
-    df['Último Dividendo'] = df['Último Dividendo'].apply(format_type_currency)
-    df['DY (12M) Acumulado'] = df['DY (12M) Acumulado'].apply(format_type)
-    df['Rentab. Acumulada'] = df['Rentab. Acumulada'].apply(format_type)
-    df['Patrimônio Líquido'] = df['Patrimônio Líquido'].apply(format_type)
-    df['P/VPA'] = df['P/VPA'].apply(format_type_currency)
-    df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_type)
-    df['Vacância Física'] = df['Vacância Física'].apply(format_type)
+    df[PRECO_ATUAL] = df[PRECO_ATUAL].apply(format_type_currency)
+    df[LIQUIDEZ_DIARIA] = df[LIQUIDEZ_DIARIA].apply(format_type)
+    df[P_VP] = df[P_VP].apply(format_type_currency)
+    df[ULTIMO_DIVIDENDO] = df[ULTIMO_DIVIDENDO].apply(format_type_currency)
+    df[DV_12M_ACUMULADO] = df[DV_12M_ACUMULADO].apply(format_type)
+    df[RENTABILIDADE_ACUMULADA] = df[RENTABILIDADE_ACUMULADA].apply(format_type)
+    df[PATRIMONIO_LIQUIDO] = df[PATRIMONIO_LIQUIDO].apply(format_type)
+    df[P_VPA] = df[P_VPA].apply(format_type_currency)
+    # df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_type)
+    # df['Vacância Física'] = df['Vacância Física'].apply(format_type)
 
     logging.info("Initial funds size %s", len(df))
 
     logging.info("Excluding funds without diversity")
-    df = df.loc[df['Quant. Ativos'] > 2]
+    df = df.loc[df[QUANTIDADE_ATIVOS] > 2]
     logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with P/VPA")
-    df = df.loc[(df['P/VPA'] > 0.74) & (df['P/VPA'] < 1.26)]
+    df = df.loc[(df[P_VPA] > 0.74) & (df[P_VPA] < 1.26)]
     logging.info("Funds size %s", len(df))
 
-    logging.info("Excluding funds with Vacância Financeira")
-    df = df.loc[df['Vacância Financeira'] < 16]
-    logging.info("Funds size %s", len(df))
+    # logging.info("Excluding funds with Vacância Financeira")
+    # df = df.loc[df['Vacância Financeira'] < 16]
+    # logging.info("Funds size %s", len(df))
 
-    logging.info("Excluding funds with Vacância Física")
-    df = df.loc[df['Vacância Física'] < 16]
-    logging.info("Funds size %s", len(df))
+    # logging.info("Excluding funds with Vacância Física")
+    # df = df.loc[df['Vacância Física'] < 16]
+    # logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with DY Acumulado")
-    df = df.loc[df['DY (12M) Acumulado'] > 6]
+    df = df.loc[df[DV_12M_ACUMULADO] > 6]
     logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with Rentabilidade Acumulada")
-    df = df.loc[df['Rentab. Acumulada'] > -10]
+    df = df.loc[df[RENTABILIDADE_ACUMULADA] > -10]
     logging.info("Funds size %s", len(df))
 
     logging.info("Sorting ranking")
-    df = df.sort_values(['DY (12M) Acumulado'], ascending=[False])
+    df = df.sort_values([DV_12M_ACUMULADO], ascending=[False])
 
     logging.info("Selecting Top 15")
     df = df.head(15)
 
-    price = df['Preço Atual (R$)'].sum()
-    dividend = df['Último Dividendo'].sum()
+    price = df[PRECO_ATUAL].sum()
+    dividend = df[ULTIMO_DIVIDENDO].sum()
     percent = (dividend * 100) / price
 
     logging.info('Formatting results')
-    df['Preço Atual (R$)'] = df['Preço Atual (R$)'].apply(format_money)
-    df['Liquidez Diária (R$)'] = df['Liquidez Diária (R$)'].apply(format_money)
-    df['P/VP'] = df['P/VP'].apply(format_without_symbol)
-    df['Último Dividendo'] = df['Último Dividendo'].apply(format_money)
-    df['DY (12M) Acumulado'] = df['DY (12M) Acumulado'].apply(format_percent)
-    df['Rentab. Acumulada'] = df['Rentab. Acumulada'].apply(format_percent)
-    df['Patrimônio Líquido'] = df['Patrimônio Líquido'].apply(format_money)
-    df['P/VPA'] = df['P/VPA'].apply(format_without_symbol)
-    df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_percent)
-    df['Vacância Física'] = df['Vacância Física'].apply(format_percent)
+    df[PRECO_ATUAL] = df[PRECO_ATUAL].apply(format_money)
+    df[LIQUIDEZ_DIARIA] = df[LIQUIDEZ_DIARIA].apply(format_money)
+    df[P_VP] = df[P_VP].apply(format_without_symbol)
+    df[ULTIMO_DIVIDENDO] = df[ULTIMO_DIVIDENDO].apply(format_money)
+    df[DV_12M_ACUMULADO] = df[DV_12M_ACUMULADO].apply(format_percent)
+    df[RENTABILIDADE_ACUMULADA] = df[RENTABILIDADE_ACUMULADA].apply(format_percent)
+    df[PATRIMONIO_LIQUIDO] = df[PATRIMONIO_LIQUIDO].apply(format_money)
+    df[P_VPA] = df[P_VPA].apply(format_without_symbol)
+    # df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_percent)
+    # df['Vacância Física'] = df['Vacância Física'].apply(format_percent)
 
     df.info()
 
@@ -183,13 +193,14 @@ def process_ranking():
 
 
 def get_file():
-    return f'{os.path.dirname(__file__)}/fiis-top15.md'
+    return f'{os.path.dirname(__file__)}/README.md'
 
 
 def write_header_in_file(titles):
     file = get_file()
     with open(file, 'w') as writer:
         writer.write('# FIIS - Top 15\n')
+        writer.write(f'>IMPORTANTE: Este Top 15 não é uma recomendação de investimentos.\n\n')
         header = '|'
         above_header = '|'
         for title in titles:
