@@ -20,6 +20,7 @@ RENTABILIDADE_ACUMULADA = 'Rentab. Acumulada'
 DV_12M_ACUMULADO = 'DY (12M) Acumulado'
 P_VPA = 'P/VPA'
 QUANTIDADE_ATIVOS = 'Quant. Ativos'
+SETOR = 'Setor'
 
 config.fileConfig('log.conf')
 
@@ -150,6 +151,10 @@ def process_ranking():
 
     logging.info("Excluding funds with Rentabilidade Acumulada")
     df = df.loc[df[RENTABILIDADE_ACUMULADA] > -10]
+    logging.info("Funds size %s", len(df))
+
+    logging.info("Excluding funds with Setor Indefinido")
+    df = df.loc[df[SETOR] != 'Indefinido']
     logging.info("Funds size %s", len(df))
 
     logging.info("Sorting ranking")
