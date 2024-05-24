@@ -21,6 +21,7 @@ DV_12M_ACUMULADO = 'DY (12M) Acumulado'
 P_VPA = 'P/VPA'
 QUANTIDADE_ATIVOS = 'Quant. Ativos'
 SETOR = 'Setor'
+FUNDOS = 'Fundos'
 
 config.fileConfig('log.conf')
 
@@ -146,7 +147,7 @@ def process_ranking():
     # logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with DY Acumulado")
-    df = df.loc[df[DV_12M_ACUMULADO] > 6]
+    df = df.loc[df[DV_12M_ACUMULADO] > 10]
     logging.info("Funds size %s", len(df))
 
     logging.info("Excluding funds with Rentabilidade Acumulada")
@@ -157,11 +158,15 @@ def process_ranking():
     df = df.loc[df[SETOR] != 'Indefinido']
     logging.info("Funds size %s", len(df))
 
+    logging.info("Excluding funds ARCT11")
+    df = df.loc[~df[FUNDOS].isin(['ARCT11'])]
+    logging.info("Funds size %s", len(df))
+
     logging.info("Sorting ranking")
     df = df.sort_values([DV_12M_ACUMULADO], ascending=[False])
 
     logging.info("Selecting Top 15")
-    df = df.head(15)
+    df = df.head(10)
 
     price = df[PRECO_ATUAL].sum()
     dividend = df[ULTIMO_DIVIDENDO].sum()
