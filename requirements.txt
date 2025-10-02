@@ -1,2 +1,5 @@
 lxml
 babel
+pandas
+requests
+selenium

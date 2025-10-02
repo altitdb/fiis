@@ -22,6 +22,7 @@ P_VPA = 'P/VPA'
 QUANTIDADE_ATIVOS = 'Quant. Ativos'
 SETOR = 'Setor'
 FUNDOS = 'Fundos'
+NUM_COTISTAS = 'Num. Cotistas'
 
 config.fileConfig('log.conf')
 
@@ -125,6 +126,7 @@ def process_ranking():
     df[RENTABILIDADE_ACUMULADA] = df[RENTABILIDADE_ACUMULADA].apply(format_type)
     df[PATRIMONIO_LIQUIDO] = df[PATRIMONIO_LIQUIDO].apply(format_type)
     df[P_VPA] = df[P_VPA].apply(format_type_currency)
+    df[NUM_COTISTAS] = df[NUM_COTISTAS].apply(format_type)
     # df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_type)
     # df['Vacância Física'] = df['Vacância Física'].apply(format_type)
 
@@ -162,11 +164,19 @@ def process_ranking():
     df = df.loc[~df[FUNDOS].isin(['ARCT11'])]
     logging.info("Funds size %s", len(df))
 
+    logging.info("Excluding funds with Num Cotistas less than 1000")
+    df = df.loc[df[NUM_COTISTAS] > 10000]
+    logging.info("Funds size %s", len(df))
+
+    logging.info("Excluding funds with Liquidez Diaria R% less than 1000")
+    df = df.loc[df[LIQUIDEZ_DIARIA] > 1000000]
+    logging.info("Funds size %s", len(df))
+
     logging.info("Sorting ranking")
     df = df.sort_values([DV_12M_ACUMULADO], ascending=[False])
 
     logging.info("Selecting Top 15")
-    df = df.head(10)
+    # df = df.head(15)
 
     price = df[PRECO_ATUAL].sum()
     dividend = df[ULTIMO_DIVIDENDO].sum()
