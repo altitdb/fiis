@@ -176,7 +176,7 @@ def process_ranking():
     df = df.sort_values([DV_12M_ACUMULADO], ascending=[False])
 
     logging.info("Selecting Top 15")
-    # df = df.head(15)
+    df = df.head(15)
 
     price = df[PRECO_ATUAL].sum()
     dividend = df[ULTIMO_DIVIDENDO].sum()
