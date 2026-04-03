@@ -5,83 +5,48 @@ import logging
 from logging import config
 import os.path
 from babel.numbers import format_currency
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
-PATRIMONIO_LIQUIDO = 'Patrimônio Líquido'
-LIQUIDEZ_DIARIA = 'Liquidez Diária (R$)'
-P_VP = 'P/VP'
-ULTIMO_DIVIDENDO = 'Último Dividendo'
-PRECO_ATUAL = 'Preço Atual (R$)'
-RENTABILIDADE_ACUMULADA = 'Rentab. Acumulada'
-DV_12M_ACUMULADO = 'DY (12M) Acumulado'
-P_VPA = 'P/VPA'
-QUANTIDADE_ATIVOS = 'Quant. Ativos'
-SETOR = 'Setor'
-FUNDOS = 'Fundos'
-NUM_COTISTAS = 'Num. Cotistas'
+
+LIQUIDEZ_DIARIA = 'liquidezmediadiaria'
+P_VP = 'pvp'
+ULTIMO_DIVIDENDO = 'dividendo'
+PRECO_ATUAL = 'valor'
+RENTABILIDADE_ACUMULADA = 'rentabilidade'
+DV_12M_ACUMULADO = 'soma_yield_12m'
+P_VPA = 'p_vpa'
+QUANTIDADE_ATIVOS = 'ativos'
+SETOR = 'setor'
+FUNDOS = 'ticker'
+NUM_COTISTAS = 'numero_cotista'
+DIVIDEND_YIELD = 'yeld'
 
 config.fileConfig('log.conf')
 
 
-def get_filename(filename):
-    today = datetime.date.today()
-    return f"{os.path.dirname(__file__)}/archive/{today}-{filename}.html"
-
-
-def verify_if_ranking_exists():
-    filename = get_filename('ranking')
-    logging.info('Verifing if %s exists', filename)
-    file_exists = os.path.exists(filename)
-    logging.info('File %s exists %s', filename, file_exists)
-    return file_exists
-
-
 def download_ranking():
-    logging.info('Downloading ranking')
-    options = webdriver.ChromeOptions()
-    # options.add_argument('--headless')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36"
-    options.add_argument(f"user-agent={user_agent}")
+    url = "https://www.fundsexplorer.com.br/wp-admin/admin-ajax.php"
 
-    service = Service('/work/fiis/webdriver/chromedriver')
-    driver = webdriver.Chrome(service=service, options=options)
+    headers = {
+        "accept": "application/json, text/plain, */*",
+        "origin": "https://www.fundsexplorer.com.br",
+        "referer": "https://www.fundsexplorer.com.br/ranking",
+        "x-csrf-token": "a31dc7ac8b",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+    }
 
-    driver.get("https://www.fundsexplorer.com.br/ranking")
-    wait = WebDriverWait(driver, 30)
+    data = {
+        "action": "funds-get-ranking"
+    }
 
-    elements = wait.until(
-        EC.presence_of_all_elements_located((By.ID, 'upTo--default-fiis-table'))
-    )
-    logging.info(f'Elements available {len(elements)}')
-
-    web_content = driver.page_source
-
-    filename = get_filename('ranking')
-    f = open(filename, 'wb')
-    f.write(web_content.encode())
-    f.close()
-
-
-def format_type_currency(value):
-    if value != value:
-        return 0
-    if type(value) == float:
-        return value / 100
-    new_value = value.replace('%', '').replace('R', '').replace('$', '').replace('.', '').replace(',', '.')
-    return float(new_value) / 100
-
-
-def format_type(value):
-    if value != value:
-        return 0
-    new_value = value.replace('%', '').replace('R', '').replace('$', '').replace('.', '').replace(',', '.')
-    return float(new_value)
+    try:
+        response = requests.post(url, headers=headers, data=data)
+        response.raise_for_status()
+        json_data = response.json()
+        df = pd.DataFrame(json_data['data'])
+        return df
+    except Exception as e:
+        print(f"Erro ao processar dados: {e}")
+        return None
 
 
 def format_money(value):
@@ -97,38 +62,56 @@ def format_percent(value):
 
 
 def process_ranking():
-    filename = get_filename('ranking')
-    df = pd.read_html(filename, encoding='utf-8')[0]
+    df = download_ranking()
     df.info()
-    
-    logging.info('Cleaning unused columns')
-    df.pop('DY (3M) Acumulado')
-    df.pop('DY (6M) Acumulado')
-    df.pop('DY (3M) média')
-    df.pop('DY (6M) média')
-    df.pop('DY Ano')
-    df.pop('DY Patrimonial')
-    df.pop('Variação Preço')
-    df.pop('Rentab. Período')
-    df.pop('VPA')
-    df.pop('Variação Patrimonial')
-    df.pop('Rentab. Patr. Período')
-    df.pop('Rentab. Patr. Acumulada')
 
+    df.pop('post_id')
+    df.pop('media_yield_3m')
+    df.pop('soma_yield_3m')
+    df.pop('media_yield_6m')
+    df.pop('soma_yield_6m')
+    df.pop('media_yield_12m')
+    df.pop('variacao_cotacao_mes')
+    df.pop('rentabilidade_mes')
+    df.pop('cotacao_fechamento')
+    df.pop('soma_yield_ano_corrente')
+    df.pop('ano')
+    df.pop('vpa_yield')
+    df.pop('vpa')
+    df.pop('vpa_change')
+    df.pop('pl')
+    df.pop('vpa_rent')
+    df.pop('vpa_rent_m')
+    df.pop('yield_vpa_3m_sum')
+    df.pop('yield_vpa_3m')
+    df.pop('yield_vpa_6m_sum')
+    df.pop('yield_vpa_6m')
+    df.pop('yield_vpa_12m_sum')
+    df.pop('yield_vpa_12m')
+    df.pop('setor_slug')
+    df.pop('patrimonio')
+    df.pop('post_title')
+    df.pop('volatility')
+    df.pop('tx_gestao')
+    df.pop('tx_admin')
+    df.pop('tx_performance')
     df.info()
 
     logging.info('Normalizing numbers')
-    df[PRECO_ATUAL] = df[PRECO_ATUAL].apply(format_type_currency)
-    df[LIQUIDEZ_DIARIA] = df[LIQUIDEZ_DIARIA].apply(format_type)
-    df[P_VP] = df[P_VP].apply(format_type_currency)
-    df[ULTIMO_DIVIDENDO] = df[ULTIMO_DIVIDENDO].apply(format_type_currency)
-    df[DV_12M_ACUMULADO] = df[DV_12M_ACUMULADO].apply(format_type)
-    df[RENTABILIDADE_ACUMULADA] = df[RENTABILIDADE_ACUMULADA].apply(format_type)
-    df[PATRIMONIO_LIQUIDO] = df[PATRIMONIO_LIQUIDO].apply(format_type)
-    df[P_VPA] = df[P_VPA].apply(format_type_currency)
-    df[NUM_COTISTAS] = df[NUM_COTISTAS].apply(format_type)
+    df[QUANTIDADE_ATIVOS] = pd.to_numeric(df[QUANTIDADE_ATIVOS]).fillna(0).astype(int)
+    df[DV_12M_ACUMULADO] = pd.to_numeric(df[DV_12M_ACUMULADO]).fillna(0.0).astype(float)
+    df[RENTABILIDADE_ACUMULADA] = pd.to_numeric(df[RENTABILIDADE_ACUMULADA]).fillna(0.0).astype(float)
+    df[NUM_COTISTAS] = pd.to_numeric(df[NUM_COTISTAS]).fillna(0).astype(int)
+    df[LIQUIDEZ_DIARIA] = pd.to_numeric(df[LIQUIDEZ_DIARIA]).astype(float)
+    df[PRECO_ATUAL] = pd.to_numeric(df[PRECO_ATUAL]).astype(float)
+    df[ULTIMO_DIVIDENDO] = pd.to_numeric(df[ULTIMO_DIVIDENDO]).astype(float)
+    df[P_VP] = pd.to_numeric(df[P_VP]).astype(float)
+    df[DIVIDEND_YIELD] = pd.to_numeric(df[DIVIDEND_YIELD]).astype(float)
     # df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_type)
     # df['Vacância Física'] = df['Vacância Física'].apply(format_type)
+    df.info()
+
+    df.to_csv('archive/ranking.csv')
 
     logging.info("Initial funds size %s", len(df))
 
@@ -189,12 +172,27 @@ def process_ranking():
     df[ULTIMO_DIVIDENDO] = df[ULTIMO_DIVIDENDO].apply(format_money)
     df[DV_12M_ACUMULADO] = df[DV_12M_ACUMULADO].apply(format_percent)
     df[RENTABILIDADE_ACUMULADA] = df[RENTABILIDADE_ACUMULADA].apply(format_percent)
-    df[PATRIMONIO_LIQUIDO] = df[PATRIMONIO_LIQUIDO].apply(format_money)
     df[P_VPA] = df[P_VPA].apply(format_without_symbol)
+    df[DIVIDEND_YIELD] = df[DIVIDEND_YIELD].apply(format_percent)
     # df['Vacância Financeira'] = df['Vacância Financeira'].apply(format_percent)
     # df['Vacância Física'] = df['Vacância Física'].apply(format_percent)
 
     df.info()
+
+    df = df.rename(columns={
+        FUNDOS: 'Fundos',
+        SETOR: 'Setor',
+        PRECO_ATUAL: 'Preço Atual (R$)',
+        LIQUIDEZ_DIARIA: 'Liquidez Diária (R$)',
+        P_VP: 'P/VP',
+        P_VPA: 'P/VPA',
+        ULTIMO_DIVIDENDO: 'Último Dividendo',
+        DV_12M_ACUMULADO: 'DY (12M) Acumulado',
+        RENTABILIDADE_ACUMULADA: 'Rentab. Acumulada',
+        QUANTIDADE_ATIVOS: 'Quant. Ativos',
+        NUM_COTISTAS: 'Num. Cotistas',
+        DIVIDEND_YIELD: 'Dividend Yield'
+    })
 
     write_header_in_file(df.columns)
     write_result_in_file(df)
@@ -256,12 +254,5 @@ def write_footer_in_file(investiment_total, dividend_total, gain_month, gain_yea
         a_writer.write(f'>Last updated at {today.ctime()}\n')
 
 
-def main():
-    ranking_exists = verify_if_ranking_exists()
-    if not ranking_exists:
-        download_ranking()
-    process_ranking()
-
-
 if __name__ == "__main__":
-    main()
+    process_ranking()
