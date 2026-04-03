@@ -1,0 +1,36 @@
+name: Atualizar Ranking de FIIS
+
+on:
+  schedule:
+    # Roda todos os dias às 06:00 UTC (03:00 Brasília)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Permite rodar manualmente pelo botão no GitHub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Instalar dependências
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas
+
+      - name: Executar script de extração
+        run: python fiis.py
+
+      - name: Commit e Push das alterações
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          # Só faz o commit se houver mudanças, para evitar erro no workflow
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto: Atualizando ranking de FIIS" && git push)
