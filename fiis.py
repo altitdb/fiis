@@ -30,8 +30,8 @@ def download_ranking():
         "accept": "application/json, text/plain, */*",
         "origin": "https://www.fundsexplorer.com.br",
         "referer": "https://www.fundsexplorer.com.br/ranking",
-        "x-csrf-token": "a31dc7ac8b",
-        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36",
+        "x-csrf-token": "28bd3250b1",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36",
     }
 
     data = {
